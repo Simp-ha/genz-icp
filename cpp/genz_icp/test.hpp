@@ -12,7 +12,7 @@ genz_icp::pipeline::GenZICP odometry;
 genz_icp::pipeline::GenZConfig config;
 
 //Path to dataset and seq
-const std::string path_to_data = "/home/dezu/Documents/DIPLO/Dataset/sequences/velodyne/";
+std::string path_to_data = "/home/dezu/Documents/DIPLO/Dataset/sequences/03/velodyne/";
 // std::vector<Matrix> poses;
 
 // Initialization of the KITTI dataloader
