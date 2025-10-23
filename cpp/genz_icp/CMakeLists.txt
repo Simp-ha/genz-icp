@@ -21,7 +21,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 cmake_minimum_required(VERSION 3.16...3.26)
-project(genz_icp_cpp VERSION 0.3.0 LANGUAGES CXX)
+project(GenZPROJ VERSION 0.3.0 LANGUAGES CXX)
+
+add_executable(SHITLORD test.cpp)
+#target_sources(SHITLORD PRIVATE test.cpp)
+
+target_link_libraries(SHITLORD PRIVATE genz_icp::pipeline genz_icp::dataloader genz_icp::core)
+
+# Optionally include headers globally
+# target_include_directories(SHITLORD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/genz)
+ 
 
 # Setup build options
 option(USE_CCACHE "Build using Ccache if found on the path" ON)
@@ -49,5 +58,6 @@ include(3rdparty/find_dependencies.cmake)
 include(cmake/CompilerOptions.cmake)
 
 add_subdirectory(core)
-add_subdirectory(metrics)
+#add_subdirectory(metrics)
+add_subdirectory(dataloader)
 add_subdirectory(pipeline)
