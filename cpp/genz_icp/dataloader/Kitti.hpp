@@ -12,8 +12,9 @@ struct KITTI{
 
     explicit KITTI(std::string& path):data_path(path){} 
 
-    std::vector<double> loadTimestamps(/*std::string file_name*/) ;
-    Vector3dVector loadPoses(const std::string& binfile);
+    std::vector<double> loadTimestamps(/*std::string file_name*/);
+    Vector3dVector loadframe(const std::string& binfile);
+    
     // void read_calib_file(const std::string& calib_path);
     // void calibration( const auto poses);
 };

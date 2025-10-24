@@ -20,86 +20,68 @@
 
 // Variables  
 std::vector<double> KITTI::loadTimestamps(/*std::string file_name*/) {
-  std::vector<double> timestamps;
-  FILE *fp = fopen((data_path+"times.txt").c_str(),"r");
-  if (!fp) return timestamps;
-  while (!feof(fp)) {
-    double S ;
-    timestamps.push_back(fscanf(fp, "%lf", &S));
-  }
-  fclose(fp);
-  return timestamps;
-}
-
-KITTI::Vector3dVector KITTI::loadPoses(const std::string& binfile) {
-    Vector3dVector poses;
-    FILE *fp = fopen((binfile).c_str(),"r");
-    if (!fp)
-    return poses;
+    std::vector<double> timestamps;
+    FILE *fp = fopen((data_path+"times.txt").c_str(),"r");
+    if (!fp) return timestamps;
     while (!feof(fp)) {
-        double a, b, c, d, e, f, g, h, i, j, k, l;
-        if (fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-           &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l
-          )==12) {
-            poses.push_back({a,b,c});
-            poses.push_back({d,e,f});
-            poses.push_back({g,h,i});
-            poses.push_back({j,k,l});
-        }
-        for(auto a : poses) {
-          std::cout << "Pose is: "<< a << std::endl;
-        }
+        double S ;
+        timestamps.push_back(fscanf(fp, "%lf", &S));
     }
     fclose(fp);
-    return poses;
+    return timestamps;
+}
 
+KITTI::Vector3dVector KITTI::loadframe(const std::string& binfile) {
+    bool output = false;
+
+    Vector3dVector points;
+    
+    // Read bin file
+    std::ifstream fp(binfile, std::ios::binary);
+    
+    if (!fp.is_open()) {
+        std::cout << "Cannot open file: " << binfile << std::endl;
+        return points;
+    }
+
+    fp.seekg(0,std::ios::end);
+    std::streamsize fp_size = fp.tellg();
+    fp.seekg(0,std::ios::beg);
+    
+    // Making buffer of n size of floats
+    std::vector<float> buffer(fp_size/sizeof(float));
+    if(!fp.read(reinterpret_cast<char*> (buffer.data()), fp_size)){
+        std::cout << "Failed to read file." << std::endl;
+    }
+
+    fp.close();
+
+    // Number of points in each bin file aka each frame
+    size_t n_points = buffer.size() / 4;
+    points.reserve(n_points);
+
+    for(size_t i = 0; i < n_points; ++i){
+        points.push_back({
+            static_cast<double> ( buffer[i * 4 + 0] ),
+            static_cast<double> ( buffer[i * 4 + 1] ),
+            static_cast<double> ( buffer[i * 4 + 2] )
+        });
+    }
+
+    // Output file
+    if(output){
+
+        std::ofstream fo("output.txt");
+        for (size_t i = 0; i<n_points; ++i ){
+            const auto& p = points[i];
+            fo << "P" << i << " = "<< p[0] << " " << p[1] << " " << p[2] <<" "<<std::endl;
+        }
+        fo.close();
+    }
+    return points;
 } 
-
-  // auto concatenate(const auto& A, const auto& B, const int n){
-  //     auto C =  A.clear(); 
-  //     for(int i=0; i<A.size(); )
-  //         for (int j = 0; j<n; ++j){
-  //             C[i][j] = 
-  //         }
-  // }
 
   //Calibrates input data according to the calib file
   // void calibrate_data(const std::string& calib_path){
     
   // }
-
-//struct PointXYZI {
-//    float x, y, z, intensity;
-//};
-//
-//std::vector<PointXYZI> loadVelodyneBin(const std::string& filename) {
-//    std::vector<PointXYZI> points;
-//
-//    std::ifstream ifs(filename, std::ios::binary);
-//    if (!ifs) {
-//        std::cout << "Failed to open: " << filename << std::endl;
-//        return points;
-//    }
-//
-//    PointXYZI point;
-//    while (ifs.read(reinterpret_cast<char*>(&point), sizeof(PointXYZI))) {
-//        points.push_back(point);
-//    }
-//
-//    return points;
-//}
-//
-//void processBinData(const std::vector<float>& data, const std::string& filename) {
-//    std::cout << "[INFO] Processing: " << filename << " | Data size: " << data.size() << std::endl;
-//
-//    // Example: print min/max (replace with your algorithm)
-//    if (!data.empty()) {
-//        float min = data[0], max = data[0];
-//        for (float val : data) {
-//            if (val < min) min = val;
-//            if (val > max) max = val;
-//        }
-//        std::cout << "   Min: " << min << ", Max: " << max << "\n";
-//    }
-//}
-//
