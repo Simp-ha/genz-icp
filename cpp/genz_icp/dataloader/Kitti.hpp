@@ -8,13 +8,15 @@ struct KITTI{
     using Vector3dVector = std::vector<Eigen::Vector3d>;
     using Vector3dDoubleTuple= std::tuple<Vector3dVector, double>;
     //Variables
-    std::string data_path;
+    const std::string data_path;
+    std::vector<std::string> seq = {"00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11" };
 
-    explicit KITTI(std::string& path):data_path(path){} 
+    explicit KITTI(const std::string& path):data_path(path){} 
 
-    std::vector<double> loadTimestamps(/*std::string file_name*/);
-    Vector3dVector loadframe(const std::string& binfile);
-    
+    std::vector<double> loadTimestamps(const std::string& file_name);
+    Vector3dVector loadframe(std::string& binfile);
+    std::vector<Eigen::Vector4d> loadposes(const std::string& filepath);
+
     // void read_calib_file(const std::string& calib_path);
     // void calibration( const auto poses);
 };

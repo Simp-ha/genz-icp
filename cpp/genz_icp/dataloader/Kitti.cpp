@@ -19,9 +19,9 @@
 // Initialize of data_path and constructing the KIITI
 
 // Variables  
-std::vector<double> KITTI::loadTimestamps(/*std::string file_name*/) {
+std::vector<double> KITTI::loadTimestamps(const std::string& file_name) {
     std::vector<double> timestamps;
-    FILE *fp = fopen((data_path+"times.txt").c_str(),"r");
+    FILE *fp = fopen(file_name.c_str(),"r");
     if (!fp) return timestamps;
     while (!feof(fp)) {
         double S ;
@@ -31,7 +31,7 @@ std::vector<double> KITTI::loadTimestamps(/*std::string file_name*/) {
     return timestamps;
 }
 
-KITTI::Vector3dVector KITTI::loadframe(const std::string& binfile) {
+KITTI::Vector3dVector KITTI::loadframe(std::string& binfile) {
     bool output = false;
 
     Vector3dVector points;
@@ -80,6 +80,30 @@ KITTI::Vector3dVector KITTI::loadframe(const std::string& binfile) {
     }
     return points;
 } 
+
+std::vector<Eigen::Vector4d> KITTI::loadposes(const std::string& filepath) {
+    std::vector<Eigen::Vector4d> poses;
+    std::ifstream poses_file(filepath);
+    Eigen::Matrix4d P = Eigen::Matrix4d::Identity(); 
+    if (!poses_file.is_open()) {
+        std::cout << "Can't open file " << filepath <<  std::endl;
+        return poses;
+    }
+    
+    // Read each line of the file with poses
+    while(poses_file >> 
+        P(0, 0) >> P(0, 1) >> P(0, 2) >> P(0, 3) >>
+        P(1, 0) >> P(1, 1) >> P(1, 2) >> P(1, 3) >> 
+        P(2, 0) >> P(2, 1) >> P(2, 2) >> P(2, 3)){
+            //Pushing each line aka 4 numbers of the T matrix into poses vector
+            for(auto row : P.rowwise()){
+                poses.push_back(row);
+            }
+    }
+    
+    poses_file.close();
+    return poses;
+}
 
   //Calibrates input data according to the calib file
   // void calibrate_data(const std::string& calib_path){
