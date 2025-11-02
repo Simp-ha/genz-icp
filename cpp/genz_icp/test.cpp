@@ -153,6 +153,15 @@ int main(int argc, char* argv[]){
         for(const auto &pose : odometry.poses()) {
             Eigen::Matrix4d T = pose.matrix();
             // Write as 12 values (3x4 part of the matrix)
+            auto calib_data=[&](){
+                calib = kitti.read_calib(dataset + seq + "/poses.txt");
+                Eigen:Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
+                Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
+                M.block<3,4>(0,0) = m34.cast<double>();
+                Eigen::Matrix4d T_calib; 
+T = M * T * M.inv();
+                return T;
+            };
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 4; ++col) {
                     ofs << T(row, col);
