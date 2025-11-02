@@ -18,7 +18,7 @@
 #include "genz_icp/dataloader/Kitti.hpp"
 
 
-bool eval (std::string& result_dir, std::string& seq){
+bool eval (const std::string& result_dir, std::string& seq){
     // ground truth and result directories
 
     std::string gt_dir         = "/home/dezu/Documents/DIPLO/Dataset/poses/";
@@ -64,18 +64,18 @@ bool eval (std::string& result_dir, std::string& seq){
     //     saveStats(total_err,result_dir);
     // }
     auto [avgT, avgR] =  genz_icp::metrics::SeqError(poses_gt, poses);
-    auto [AbsT, AbsR] =  genz_icp::metrics::AbsoluteTrajectoryError(poses_gt, poses);
+    auto [AbsR, AbsT] =  genz_icp::metrics::AbsoluteTrajectoryError(poses_gt, poses);
     std::ofstream res_file(result_dir + "_results.txt");
     
     res_file << "The average Translation Error is :" << avgT << std::endl;
     res_file << "The average Rotation Error is :" << avgR << std::endl;
-    res_file << "The average Translation Error is :" << AbsT << std::endl;
-    res_file << "The average Rotation Error is :" << AbsR << std::endl;
+    res_file << "The absolute Translation Error is :" << AbsT << std::endl;
+    res_file << "The absolute Rotation Error is :" << AbsR << std::endl;
 
     std::cout << "The average Translation Error is :" << avgT << std::endl;
     std::cout << "The average Rotation Error is :" << avgR << std::endl;
-    std::cout << "The average Translation Error is :" << AbsT << std::endl;
-    std::cout << "The average Rotation Error is :" << AbsR << std::endl;
+    std::cout << "The absolute Translation Error is :" << AbsT << std::endl;
+    std::cout << "The absolute Rotation Error is :" << AbsR << std::endl;
 
     // success
 	return true;
@@ -91,22 +91,24 @@ int main(int argc, char* argv[]){
     // const std::string n_seq = "00";
     //for(int i = 2; i < 11; ++i){
     
-    std::string seq = kitti.seq[2];
     
     // Exporting poses into est_poses.txt
     if (std::filesystem::exists("./results/"+seq))
-        std::cout << "Result directory already exists" << std::endl;
+        std::cout << "Result " << seq << " directory already exists" << std::endl;
     else
         system(("mkdir -p ./results/" + seq).c_str());
     
-    std::string result_dir = "results/" + seq;
+    //Results directory with extension of sequence number for file
+    const std::string result_dir = "results/" + seq;
+    //Output estimated poses file
     std::string filename = result_dir + "_est_poses.txt";
+    
     //Running the GENZ
     if(!std::filesystem::exists(filename) || is_empty(filename)){
 
-            //Loading each frame aka each .bin file into the bindir
-            std::vector<std::string> bindir;
-            for (const auto& entry : std::filesystem::directory_iterator(dataset + "sequences/" + seq + "/velodyne/")) {
+        //Loading each frame aka each .bin file into the bindir
+        std::vector<std::string> bindir;
+        for (const auto& entry : std::filesystem::directory_iterator(dataset + "sequences/" + seq + "/velodyne/")) {
             if (entry.is_regular_file() && entry.path().extension() == ".bin") {
                 std::cout << "Loading frames" << std::endl;
                 try {
@@ -124,7 +126,7 @@ int main(int argc, char* argv[]){
         // Sort out the binary data directory
         std::sort(bindir.begin(),bindir.end());
         
-        // Inserting the scans of a sequence and the GenZ Begins
+        // Inserting the points of a sequence and the GenZ Begins
         for(auto b: bindir){
             std::cout << b << std::endl;
             auto frame = kitti.loadframe(b);
@@ -145,6 +147,7 @@ int main(int argc, char* argv[]){
             auto [planar, non_planar] = odometry.RegisterFrame(corrected_frame(), timestamps);
         }
 
+        //Writing output seq_est_poses.txt
         std::ofstream ofs(filename);
         if (!ofs.is_open()) {
             throw std::runtime_error("Failed to open file: " + filename);
@@ -152,6 +155,16 @@ int main(int argc, char* argv[]){
         
         for(const auto &pose : odometry.poses()) {
             Eigen::Matrix4d T = pose.matrix();
+            // Apply calibration by T_calib * poses * inv(T_calib)
+            auto calibrate_poses = [](std::string& filename){
+                std::ifstream f(filename);
+                // std::ifstream p(result_dir + "_est_poses.txt");
+                auto calib = kitti.read_calib_data(dataset + seq + "/calib.txt");
+                std::vector<float> Tr ;
+                std::vector Tr = calib["Tr"];
+                f.close();
+                return 0;
+            };
             // Write as 12 values (3x4 part of the matrix)
             auto calib_data=[&](){
                 calib = kitti.read_calib(dataset + seq + "/poses.txt");
@@ -164,6 +177,8 @@ T = M * T * M.inv();
             };
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 4; ++col) {
+
+                    
                     ofs << T(row, col);
                     if (!(row == 2 && col == 3)) ofs << " "<<std::flush;
                     // (row == 2 && col == 3) ? ofs << "\n" :  ofs << " "; //aleternative
@@ -174,29 +189,6 @@ T = M * T * M.inv();
         ofs.close();
           
     }
-
-    // std::string gt_dir         = "/home/dezu/Documents/DIPLO/Dataset/poses/";
-    // const auto poses_gt = kitti.loadposes(gt_dir + seq + ".txt");
-    // const auto poses = kitti.loadposes(filename);
-    
-    // for(auto pg : poses){
-    //     std::cout <<pg <<std::endl;
-    // }
-    
-    // auto [avgT, avgR] =  genz_icp::metrics::SeqError(poses_gt, poses);
-    // auto [AbsT, AbsR] =  genz_icp::metrics::AbsoluteTrajectoryError(poses_gt, poses);
-    // std::ofstream res_file(result_dir + "results.txt");
-    
-    // res_file << "The average Translation Error is :" << avgT << std::endl;
-    // res_file << "The average Rotation Error is :" << avgR << std::endl;
-    // res_file << "The average Translation Error is :" << AbsT << std::endl;
-    // res_file << "The average Rotation Error is :" << AbsR << std::endl;
-
-    // std::cout << "The average Translation Error is :" << avgT << std::endl;
-    // std::cout << "The average Rotation Error is :" << avgR << std::endl;
-    // std::cout << "The average Translation Error is :" << AbsT << std::endl;
-    // std::cout << "The average Rotation Error is :" << AbsR << std::endl;
-
 
     if(eval(result_dir, seq))std::cout << "Evaluation is completed" << std::endl;
     return 0;
