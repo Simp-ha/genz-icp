@@ -81,8 +81,8 @@ KITTI::Vector3dVector KITTI::loadframe(std::string& binfile) {
     return points;
 } 
 
-std::vector<Eigen::Vector4d> KITTI::loadposes(const std::string& filepath) {
-    std::vector<Eigen::Vector4d> poses;
+std::vector<Eigen::Matrix4d> KITTI::loadposes(const std::string& filepath) {
+    std::vector<Eigen::Matrix4d> poses;
     std::ifstream poses_file(filepath);
     Eigen::Matrix4d P = Eigen::Matrix4d::Identity(); 
     if (!poses_file.is_open()) {
@@ -96,9 +96,7 @@ std::vector<Eigen::Vector4d> KITTI::loadposes(const std::string& filepath) {
         P(1, 0) >> P(1, 1) >> P(1, 2) >> P(1, 3) >> 
         P(2, 0) >> P(2, 1) >> P(2, 2) >> P(2, 3)){
             //Pushing each line aka 4 numbers of the T matrix into poses vector
-            for(auto row : P.rowwise()){
-                poses.push_back(row);
-            }
+            poses.push_back(P);
     }
     
     poses_file.close();

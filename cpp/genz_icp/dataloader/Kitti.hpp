@@ -15,7 +15,7 @@ struct KITTI{
 
     std::vector<double> loadTimestamps(const std::string& file_name);
     Vector3dVector loadframe(std::string& binfile);
-    std::vector<Eigen::Vector4d> loadposes(const std::string& filepath);
+    std::vector<Eigen::Matrix4d> loadposes(const std::string& filepath);
 
     // void read_calib_file(const std::string& calib_path);
     // void calibration( const auto poses);

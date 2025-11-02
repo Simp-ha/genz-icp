@@ -23,13 +23,13 @@
 cmake_minimum_required(VERSION 3.16...3.26)
 project(GenZPROJ VERSION 0.3.0 LANGUAGES CXX)
 
-add_executable(SHITLORD test.cpp)
-#target_sources(SHITLORD PRIVATE test.cpp)
+add_executable(genzcpp test.cpp)
+#target_sources(genzcpp PRIVATE test.cpp)
 
-target_link_libraries(SHITLORD PRIVATE genz_icp::pipeline genz_icp::dataloader genz_icp::core)
+target_link_libraries(genzcpp PRIVATE genz_icp::pipeline genz_icp::dataloader genz_icp::core genz_icp::metrics)
 
 # Optionally include headers globally
-# target_include_directories(SHITLORD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/genz)
+# target_include_directories(genzcpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/genz)
  
 
 # Setup build options
@@ -58,6 +58,6 @@ include(3rdparty/find_dependencies.cmake)
 include(cmake/CompilerOptions.cmake)
 
 add_subdirectory(core)
-#add_subdirectory(metrics)
+add_subdirectory(metrics)
 add_subdirectory(dataloader)
 add_subdirectory(pipeline)

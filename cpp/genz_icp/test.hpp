@@ -1,19 +1,15 @@
 #include "genz_icp/pipeline/GenZICP.hpp"
 #include "genz_icp/dataloader/Kitti.hpp"
-// #include "devkit/cpp/evaluate_odometry.hpp"
-// #include "devkit/cpp/matrix.h"
+#include "genz_icp/metrics/Metrics.hpp"
 
+//Arguments
+const std::string dataset = "/home/dezu/Documents/DIPLO/Dataset/";
 
-using Vector3dVector = std::vector<Eigen::Vector3d>;
-// using Vector3dVectorTuple = std::tuple<Vector3dVector, double>;
+bool o_file = false;
 
 // GenZ-ICP
-genz_icp::pipeline::GenZICP odometry;
 genz_icp::pipeline::GenZConfig config;
-
-//Path to dataset and seq
-std::string path_to_data = "/home/dezu/Documents/DIPLO/Dataset/sequences/03/velodyne/";
-// std::vector<Matrix> poses;
+genz_icp::pipeline::GenZICP odometry = genz_icp::pipeline::GenZICP(config);
 
 // Initialization of the KITTI dataloader
-KITTI kitti(path_to_data);
+KITTI kitti(dataset);
