@@ -17,6 +17,6 @@ struct KITTI{
     Vector3dVector loadframe(std::string& binfile);
     std::vector<Eigen::Matrix4d> loadposes(const std::string& filepath);
 
-    // void read_calib_file(const std::string& calib_path);
+    std::unordered_map<std::string, std::vector<float>> read_calib_data(const std::string& calib_path);
     // void calibration( const auto poses);
 };

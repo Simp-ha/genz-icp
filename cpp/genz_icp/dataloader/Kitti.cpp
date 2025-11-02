@@ -104,6 +104,40 @@ std::vector<Eigen::Matrix4d> KITTI::loadposes(const std::string& filepath) {
 }
 
   //Calibrates input data according to the calib file
-  // void calibrate_data(const std::string& calib_path){
-    
-  // }
+std::unordered_map<std::string, std::vector<float>> KITTI::read_calib_data(const std::string& calib_path){
+    std::unordered_map<std::string, std::vector<float>> calib_dict;
+    std::ifstream f(calib_path);
+
+    if(!f.is_open()){
+        std::cout << "Failed to open the file" << std::endl;
+    }
+
+    std::string line;
+    while (std::getline(f, line)) {
+            std::istringstream iss(line);
+            std::string key;
+            iss >> key; // read first token (e.g., "P0:")
+
+            if (key == "calib_time:") {
+                continue;
+            }
+
+            // Remove trailing colon from key
+            if (!key.empty() && key.back() == ':') {
+                key.pop_back();
+            }
+
+            std::vector<float> values;
+            float val;
+            while (iss >> val) {
+                values.push_back(val);
+            }
+
+            if (!values.empty()) {
+                calib_dict[key] = values;
+            }
+        }
+
+        f.close();
+        return calib_dict;
+    }

@@ -90,7 +90,9 @@ int main(int argc, char* argv[]){
     // First Arguments for outputs etc.
     // const std::string n_seq = "00";
     //for(int i = 2; i < 11; ++i){
-    
+    char* p;
+    int i = strtol(argv[1], &p, 10);
+    std::string seq = kitti.seq[i];
     
     // Exporting poses into est_poses.txt
     if (std::filesystem::exists("./results/"+seq))
@@ -102,13 +104,14 @@ int main(int argc, char* argv[]){
     const std::string result_dir = "results/" + seq;
     //Output estimated poses file
     std::string filename = result_dir + "_est_poses.txt";
+    std::string dataset_seq = dataset + "sequences/" + seq ; 
     
     //Running the GENZ
     if(!std::filesystem::exists(filename) || is_empty(filename)){
 
         //Loading each frame aka each .bin file into the bindir
         std::vector<std::string> bindir;
-        for (const auto& entry : std::filesystem::directory_iterator(dataset + "sequences/" + seq + "/velodyne/")) {
+        for (const auto& entry : std::filesystem::directory_iterator(dataset_seq + "/velodyne/")) {
             if (entry.is_regular_file() && entry.path().extension() == ".bin") {
                 std::cout << "Loading frames" << std::endl;
                 try {
@@ -141,7 +144,7 @@ int main(int argc, char* argv[]){
             };
             
             // Load timestamps
-            auto timestamps = kitti.loadTimestamps(dataset + seq + "/times.txt");
+            auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
             // std::cout <<"Timestamps are loaded"<<std::endl;;
             
             auto [planar, non_planar] = odometry.RegisterFrame(corrected_frame(), timestamps);
@@ -155,31 +158,26 @@ int main(int argc, char* argv[]){
         
         for(const auto &pose : odometry.poses()) {
             Eigen::Matrix4d T = pose.matrix();
+            
+            std::cout << T << std::endl;
+
             // Apply calibration by T_calib * poses * inv(T_calib)
-            auto calibrate_poses = [](std::string& filename){
-                std::ifstream f(filename);
-                // std::ifstream p(result_dir + "_est_poses.txt");
-                auto calib = kitti.read_calib_data(dataset + seq + "/calib.txt");
-                std::vector<float> Tr ;
-                std::vector Tr = calib["Tr"];
-                f.close();
-                return 0;
-            };
-            // Write as 12 values (3x4 part of the matrix)
             auto calib_data=[&](){
-                calib = kitti.read_calib(dataset + seq + "/poses.txt");
-                Eigen:Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
+                auto calib = kitti.read_calib_data(dataset_seq + "/calib.txt");
+                Eigen::Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
                 Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
                 M.block<3,4>(0,0) = m34.cast<double>();
                 Eigen::Matrix4d T_calib; 
-T = M * T * M.inv();
-                return T;
+                T_calib = M * T * M.inverse();
+                return T_calib;
             };
+            std::cout << calib_data() << std::endl;
+            // Write as 12 values (3x4 part of the matrix)
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 4; ++col) {
 
                     
-                    ofs << T(row, col);
+                    ofs << calib_data()(row, col);
                     if (!(row == 2 && col == 3)) ofs << " "<<std::flush;
                     // (row == 2 && col == 3) ? ofs << "\n" :  ofs << " "; //aleternative
                 }
