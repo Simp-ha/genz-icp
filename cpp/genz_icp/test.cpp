@@ -29,9 +29,9 @@ inline std::vector<Eigen::Matrix4d> apply_calibration(Eigen::Matrix4d& M, std::v
 }
 
 // Insert a calibration Matrix 4x4 by using the kitti read calib data
-inline Eigen::Matrix4d insert_calibration_matrix (const std::string& data_path) {
-    // Reading calib.txt
-    auto calib = kitti.read_calib_data(data_path);
+inline Eigen::Matrix4d insert_calibration_matrix (const std::string& calib_path) {
+    // Dictionary calib from calib.txt
+    auto calib = kitti.read_calib_data(calib_path);
     // Grubbing data with key "Tr" from calib dictionary
     Eigen::Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
     Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
@@ -46,14 +46,15 @@ bool eval (const std::string& result_dir, std::string& seq){
     const std::string dataset_seq = dataset + "sequences/" + seq ; 
 
     auto poses_gt = kitti.loadposes(gt_dir + ".txt");
+    // Already calibrated poses
     auto poses = kitti.loadposes(result_dir + "_est_poses.txt");
     
-    auto M = insert_calibration_matrix(dataset_seq + "/calib.txt");
-    auto calib_poses_gt = apply_calibration(M, poses_gt );
-    auto calib_poses = apply_calibration(M, poses);
+    // auto M = insert_calibration_matrix(dataset_seq + "/calib.txt");
+    // auto calib_poses_gt = apply_calibration(M, poses_gt );
+    // auto calib_poses = apply_calibration(M, poses);
 
-    auto [avgT, avgR] =  genz_icp::metrics::SeqError(calib_poses_gt, calib_poses);
-    auto [AbsR, AbsT] =  genz_icp::metrics::AbsoluteTrajectoryError(calib_poses_gt, calib_poses);
+    auto [avgT, avgR] =  genz_icp::metrics::SeqError(poses_gt, poses);
+    auto [AbsR, AbsT] =  genz_icp::metrics::AbsoluteTrajectoryError(poses_gt, poses);
 
     std::ofstream res_file(result_dir + "_results.txt");
     
@@ -121,28 +122,41 @@ int main(int argc, char* argv[]){
         // Load timestamps
         auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
         
+        // if(debug){
+        //     getchar();
+        // }
+        
         // Sort out the binary data directory
         std::sort(bindir.begin(),bindir.end());
         // Inserting the points of a sequence and the GenZ Begins
         for(auto b: bindir){
             std::cout << b << std::endl;
             auto frame = kitti.loadframe(b);
-            if(debug){
-                getchar();
-            }
             auto [planar, non_planar] = odometry.RegisterFrame(frame, timestamps);
         }
-
+        
         //Writing output seq_est_poses.txt
         std::ofstream ofs(filename);
         if (!ofs.is_open()) {
             throw std::runtime_error("Failed to open file: " + filename);
         }
         
-        auto M = insert_calibration_matrix(dataset_seq + "/calib.txt");
+        auto calibration = [&](Eigen::Matrix4d& T){
+            // Dictionary calib from calib.txt
+            auto calib = kitti.read_calib_data(dataset_seq + "/calib.txt");
+            // Grubbing data with key "Tr" from calib dictionary
+            Eigen::Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
+            Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
+            // Converting into homogenous matrix 4x4
+            M.block<3,4>(0,0) = m34.cast<double>();
+            T = M*T*M.inverse();
+        };
+
         for(const auto &pose : odometry.poses()) {
             Eigen::Matrix4d T = pose.matrix();
-            apply_calibration(M, T);
+            std::cout << T << std::endl;
+            calibration(T);
+            // Calibrate the data
             // Write as 12 values (3x4 part of the matrix)
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 4; ++col) {
