@@ -16,80 +16,72 @@
 #include "genz_icp/pipeline/GenZICP.hpp"
 #include "genz_icp/metrics/Metrics.hpp"
 #include "genz_icp/dataloader/Kitti.hpp"
+// Apply calibration for Matrix
+inline void apply_calibration(Eigen::Matrix4d& M, Eigen::Matrix4d& T) { T = M * T * M.inverse(); } 
 
+// Apply calibration for whole pose 
+inline std::vector<Eigen::Matrix4d> apply_calibration(Eigen::Matrix4d& M, std::vector<Eigen::Matrix4d>& poses) { 
+    std::vector<Eigen::Matrix4d> calibrated_data;
+    for(const auto& T:poses){
+        calibrated_data.push_back( M * T * M.inverse());
+    }
+    return calibrated_data;
+}
+
+// Insert a calibration Matrix 4x4 by using the kitti read calib data
+inline Eigen::Matrix4d insert_calibration_matrix (const std::string& data_path) {
+    // Reading calib.txt
+    auto calib = kitti.read_calib_data(data_path);
+    // Grubbing data with key "Tr" from calib dictionary
+    Eigen::Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
+    Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
+    // Converting into homogenous matrix 4x4
+    M.block<3,4>(0,0) = m34.cast<double>();
+    return M;
+}
 
 bool eval (const std::string& result_dir, std::string& seq){
     // ground truth and result directories
+    const std::string gt_dir      = dataset + "poses/" + seq;
+    const std::string dataset_seq = dataset + "sequences/" + seq ; 
 
-    std::string gt_dir         = "/home/dezu/Documents/DIPLO/Dataset/poses/";
-    // std::string error_dir      = result_dir + "/errors";
-    // std::string plot_path_dir  = result_dir + "/plot_path";
-    // std::string plot_error_dir = result_dir + "/plot_error";
-
-    // // create output directories
-    // if( std::filesystem::exists(error_dir)||
-    //     std::filesystem::exists(error_dir)||
-    //     std::filesystem::exists(error_dir)){
-    //         std::cout << "Error directories already exists"
-    // }
-    // system(("mkdir " + error_dir).c_str());
-    // system(("mkdir " + plot_path_dir).c_str());
-    // system(("mkdir " + plot_error_dir).c_str());
-
-    const auto poses_gt = kitti.loadposes(gt_dir + seq + ".txt");
-    const auto poses = kitti.loadposes(result_dir + "_est_poses.txt");
-    // file name
-    // char file_name[256];
-    // sprintf(file_name,"%02d.txt",seq);
-        
-    // save + plot bird's eye view trajectories
-    // savePathPlot(poses_gt,poses_result,plot_path_dir + "/" + file_name);
-    // vector<int32_t> roi = computeRoi(poses_gt,poses_result);
-    // plotPathPlot(plot_path_dir,roi,i);
-
-    // // save + plot individual errors
-    // char prefix[16];
-    // sprintf(prefix,"%02d",i);
-    // saveErrorPlots(seq_err,plot_error_dir,prefix);
-    // plotErrorPlots(plot_error_dir,prefix);
+    auto poses_gt = kitti.loadposes(gt_dir + ".txt");
+    auto poses = kitti.loadposes(result_dir + "_est_poses.txt");
     
-    // // }
-    
-    // save + plot total errors + summary statistics
-    // if (total_err.size()>0) {
-    //     char prefix[16];
-    //     sprintf(prefix,"avg");
-    //     saveErrorPlots(total_err,plot_error_dir,prefix);
-    //     plotErrorPlots(plot_error_dir,prefix);
-    //     saveStats(total_err,result_dir);
-    // }
-    auto [avgT, avgR] =  genz_icp::metrics::SeqError(poses_gt, poses);
-    auto [AbsR, AbsT] =  genz_icp::metrics::AbsoluteTrajectoryError(poses_gt, poses);
+    auto M = insert_calibration_matrix(dataset_seq + "/calib.txt");
+    auto calib_poses_gt = apply_calibration(M, poses_gt );
+    auto calib_poses = apply_calibration(M, poses);
+
+    auto [avgT, avgR] =  genz_icp::metrics::SeqError(calib_poses_gt, calib_poses);
+    auto [AbsR, AbsT] =  genz_icp::metrics::AbsoluteTrajectoryError(calib_poses_gt, calib_poses);
+
     std::ofstream res_file(result_dir + "_results.txt");
     
-    res_file << "The average Translation Error is :" << avgT << std::endl;
-    res_file << "The average Rotation Error is :" << avgR << std::endl;
-    res_file << "The absolute Translation Error is :" << AbsT << std::endl;
-    res_file << "The absolute Rotation Error is :" << AbsR << std::endl;
+    res_file << "The Average Translation Error is :     " << avgT << std::endl;
+    res_file << "The Average Rotation Error is :        " << avgR << std::endl;
+    res_file << "The Absolute Translation Error is :    " << AbsT << std::endl;
+    res_file << "The Absolute Rotation Error is :       " << AbsR << std::endl;
 
-    std::cout << "The average Translation Error is :" << avgT << std::endl;
-    std::cout << "The average Rotation Error is :" << avgR << std::endl;
-    std::cout << "The absolute Translation Error is :" << AbsT << std::endl;
-    std::cout << "The absolute Rotation Error is :" << AbsR << std::endl;
+    std::cout << "The Average Translation Error is :    " << avgT << std::endl;
+    std::cout << "The Average Rotation Error is :       " << avgR << std::endl;
+    std::cout << "The Absolute Translation Error is :   " << AbsT << std::endl;
+    std::cout << "The Absolute Rotation Error is :      " << AbsR << std::endl;
 
     // success
 	return true;
 }
 
-bool is_empty(std::string& filename) {
+bool is_empty(const std::string& filename) {
     std::ifstream file(filename);
     return file.tellg() == 0 && file.peek() == std::ifstream::traits_type::eof();
 }
+
 
 int main(int argc, char* argv[]){
     // First Arguments for outputs etc.
     // const std::string n_seq = "00";
     //for(int i = 2; i < 11; ++i){
+    bool debug = true;
     char* p;
     int i = strtol(argv[1], &p, 10);
     std::string seq = kitti.seq[i];
@@ -103,17 +95,17 @@ int main(int argc, char* argv[]){
     //Results directory with extension of sequence number for file
     const std::string result_dir = "results/" + seq;
     //Output estimated poses file
-    std::string filename = result_dir + "_est_poses.txt";
-    std::string dataset_seq = dataset + "sequences/" + seq ; 
+    const std::string filename = result_dir + "_est_poses.txt";
+    const std::string dataset_seq = dataset + "sequences/" + seq ; 
     
     //Running the GENZ
-    if(!std::filesystem::exists(filename) || is_empty(filename)){
+    if(true){//std::filesystem::exists(filename) || is_empty(filename)){
 
         //Loading each frame aka each .bin file into the bindir
         std::vector<std::string> bindir;
+        std::cout << "Loading frames" << std::endl;
         for (const auto& entry : std::filesystem::directory_iterator(dataset_seq + "/velodyne/")) {
             if (entry.is_regular_file() && entry.path().extension() == ".bin") {
-                std::cout << "Loading frames" << std::endl;
                 try {
                     bindir.push_back(entry.path());
                 } catch (const std::exception& e) {
@@ -126,28 +118,19 @@ int main(int argc, char* argv[]){
             }
         }
         
+        // Load timestamps
+        auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
+        
         // Sort out the binary data directory
         std::sort(bindir.begin(),bindir.end());
-        
         // Inserting the points of a sequence and the GenZ Begins
         for(auto b: bindir){
             std::cout << b << std::endl;
             auto frame = kitti.loadframe(b);
-            auto corrected_frame = [&frame]() {
-                constexpr double VERTICAL_ANGLE_OFFSET = (0.205 * M_PI) / 180.0;
-                KITTI::Vector3dVector frame_ = frame;
-                std::transform(frame_.cbegin(), frame_.cend(), frame_.begin(), [&](const auto pt) {
-                    const Eigen::Vector3d rotationVector = pt.cross(Eigen::Vector3d(0., 0., 1.));
-                    return Eigen::AngleAxisd(VERTICAL_ANGLE_OFFSET, rotationVector.normalized()) * pt;
-                    });
-                return frame_;
-            };
-            
-            // Load timestamps
-            auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
-            // std::cout <<"Timestamps are loaded"<<std::endl;;
-            
-            auto [planar, non_planar] = odometry.RegisterFrame(corrected_frame(), timestamps);
+            if(debug){
+                getchar();
+            }
+            auto [planar, non_planar] = odometry.RegisterFrame(frame, timestamps);
         }
 
         //Writing output seq_est_poses.txt
@@ -156,28 +139,14 @@ int main(int argc, char* argv[]){
             throw std::runtime_error("Failed to open file: " + filename);
         }
         
+        auto M = insert_calibration_matrix(dataset_seq + "/calib.txt");
         for(const auto &pose : odometry.poses()) {
             Eigen::Matrix4d T = pose.matrix();
-            
-            std::cout << T << std::endl;
-
-            // Apply calibration by T_calib * poses * inv(T_calib)
-            auto calib_data=[&](){
-                auto calib = kitti.read_calib_data(dataset_seq + "/calib.txt");
-                Eigen::Map<const Eigen::Matrix<float,3,4,Eigen::RowMajor>> m34(calib["Tr"].data());
-                Eigen::Matrix4d M = Eigen::Matrix4d::Identity(); 
-                M.block<3,4>(0,0) = m34.cast<double>();
-                Eigen::Matrix4d T_calib; 
-                T_calib = M * T * M.inverse();
-                return T_calib;
-            };
-            std::cout << calib_data() << std::endl;
+            apply_calibration(M, T);
             // Write as 12 values (3x4 part of the matrix)
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 4; ++col) {
-
-                    
-                    ofs << calib_data()(row, col);
+                    ofs << T(row, col);
                     if (!(row == 2 && col == 3)) ofs << " "<<std::flush;
                     // (row == 2 && col == 3) ? ofs << "\n" :  ofs << " "; //aleternative
                 }
