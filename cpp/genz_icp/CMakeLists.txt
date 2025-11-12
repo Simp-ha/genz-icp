@@ -23,7 +23,7 @@
 cmake_minimum_required(VERSION 3.16...3.26)
 project(GenZPROJ VERSION 0.3.0 LANGUAGES CXX)
 
-add_executable(genzcpp test.cpp)
+add_executable(genzcpp simpleT.cpp)
 #target_sources(genzcpp PRIVATE test.cpp)
 
 target_link_libraries(genzcpp PRIVATE genz_icp::pipeline genz_icp::dataloader genz_icp::core genz_icp::metrics)

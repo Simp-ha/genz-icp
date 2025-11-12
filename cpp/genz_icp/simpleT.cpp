@@ -16,6 +16,8 @@
 #include "genz_icp/pipeline/GenZICP.hpp"
 #include "genz_icp/metrics/Metrics.hpp"
 #include "genz_icp/dataloader/Kitti.hpp"
+using Vector3dVector = std::vector<Eigen::Vector3d>;
+
 // Apply calibration for Matrix
 inline void apply_calibration(Eigen::Matrix4d& M, Eigen::Matrix4d& T) { T = M * T * M.inverse(); } 
 
@@ -121,25 +123,43 @@ int main(int argc, char* argv[]){
         
         // Load timestamps
         auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
-        
-        
-        // Sort out the binary data directory
+
         std::sort(bindir.begin(),bindir.end());
+
+        //Making batches for data
+        const int batch_size = 500;
+        const int n = bindir.size()/batch_size;
+        std::string batches[n+1][batch_size];
+        for(int i = 0; i < n + 1; ++i){
+            int bi = i*batch_size;
+            for(int j= 0; j < batch_size; j++){
+                if(bindir[bi+j].empty()) break;
+                batches[i][j] =  bindir[bi+j];
+            }
+        }
+
+        // Sort out the binary data directory
         // Inserting the points of a sequence and the GenZ Begins
         std::ofstream file("frame.txt");
-        for(auto b: bindir){
-            std::cout << b << std::endl;
-            auto frame = kitti.loadframe(b);
-            if(debug){
-                std::cout<<"Frame=["; 
-                for(auto f: frame) {
-                    for(auto p: f) file << p << " ";
-                    file << std::endl;
+        // std::tuple<Vector3dVector, Vector3dVector> results[n];
+        // std::vector<std::tuple<Vector3dVector, Vector3dVector>> ALLres;
+
+        // for(auto b: bindir){
+        for(int i = 0; i < n + 1; ++i){
+            for(int j = 0; j < batch_size; ++j){
+                std::cout << "BATCH " + i << batches[i][j] << std::endl;
+                auto frame = kitti.loadframe(batches[i][j]);
+                if(debug){
+                    std::cout<<"Frame=["; 
+                    for(auto f: frame) {
+                        for(auto p: f) file << p << " ";
+                        file << std::endl;
+                    }
+                    getchar();
                 }
-                getchar();
-                std::cout << "\nNEXT PLEASE" <<std::endl;
+                odometry.RegisterFrame(frame, timestamps);
             }
-            auto [planar, non_planar] = odometry.RegisterFrame(frame, timestamps);
+            getchar();
         }
         file.close();
         //Writing output seq_est_poses.txt
@@ -178,7 +198,7 @@ int main(int argc, char* argv[]){
           
     }
 
-    if(eval(result_dir, seq))std::cout << "Evaluation is completed" << std::endl;
+  //if(eval(result_dir, seq))std::cout << "Evaluation is completed" << std::endl;
     return 0;
 }
 //}

@@ -13,9 +13,9 @@ struct KITTI{
 
     explicit KITTI(const std::string& path):data_path(path){} 
 
-    std::vector<double> loadTimestamps(const std::string& file_name);
+    std::vector<double> loadTimestamps(const std::string& timestamps_path);
     Vector3dVector loadframe(std::string& binfile);
-    std::vector<Eigen::Matrix4d> loadposes(const std::string& filepath);
+    std::vector<Eigen::Matrix4d> loadposes(const std::string& poses_gt_path);
 
     std::unordered_map<std::string, std::vector<float>> read_calib_data(const std::string& calib_path);
     // void calibration( const auto poses);

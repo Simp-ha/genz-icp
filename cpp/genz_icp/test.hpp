@@ -4,8 +4,8 @@
 
 //Arguments
 const std::string dataset = "/home/dezu/Documents/DIPLO/Dataset/";
-
 bool o_file = false;
+// std::vector<Eigen::Matrix4d> poses;
 
 // GenZ-ICP
 genz_icp::pipeline::GenZConfig config;

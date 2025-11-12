@@ -4,36 +4,18 @@
 #include<Eigen/Core>
 #include<fstream>
 
-
-  
-// Vector3dVector correct_frame = [&](const std::vector<Eigen::Vector3d> &frame) {
-//     constexpr double VERTICAL_ANGLE_OFFSET = (0.205 * M_PI) / 180.0;
-//     std::vector<Eigen::Vector3d> frame_ = frame;
-//     std::transform(frame_.cbegin(), frame_.cend(), frame_.begin(), [&](const auto pt) {
-//         const Eigen::Vector3d rotationVector = pt.cross(Eigen::Vector3d(0., 0., 1.));
-//         return Eigen::AngleAxisd(VERTICAL_ANGLE_OFFSET, rotationVector.normalized()) * pt;
-//     });
-//     return frame_;
-// };
-// Returns the Frame and timestamps in tuple
-// Initialize of data_path and constructing the KIITI
-
-// Variables  
-std::vector<double> KITTI::loadTimestamps(const std::string& file_name) {
+std::vector<double> KITTI::loadTimestamps(const std::string& timestamps_path) {
     std::vector<double> timestamps;
-    FILE *fp = fopen(file_name.c_str(),"r");
-    if (!fp) return timestamps;
-    while (!feof(fp)) {
-        double S ;
-        timestamps.push_back(fscanf(fp, "%lf", &S));
-    }
-    fclose(fp);
+    std::ifstream fp(timestamps_path);
+    if (!fp.is_open()) return timestamps;
+    double S;
+    while (fp >> S) timestamps.push_back(S);
+    fp.close();
     return timestamps;
 }
 
+// Loading points from binary files 
 KITTI::Vector3dVector KITTI::loadframe(std::string& binfile) {
-    bool output = false;
-
     Vector3dVector points;
     
     // Read bin file
@@ -67,26 +49,15 @@ KITTI::Vector3dVector KITTI::loadframe(std::string& binfile) {
             static_cast<double> ( buffer[i * 4 + 2] )
         });
     }
-
-    // Output file
-    if(output){
-
-        std::ofstream fo("output.txt");
-        for (size_t i = 0; i<n_points; ++i ){
-            const auto& p = points[i];
-            fo << "P" << i << " = "<< p[0] << " " << p[1] << " " << p[2] <<" "<<std::endl;
-        }
-        fo.close();
-    }
     return points;
 } 
 
-std::vector<Eigen::Matrix4d> KITTI::loadposes(const std::string& filepath) {
+std::vector<Eigen::Matrix4d> KITTI::loadposes(const std::string& poses_path) {
     std::vector<Eigen::Matrix4d> poses;
-    std::ifstream poses_file(filepath);
+    std::ifstream poses_file(poses_path);
     Eigen::Matrix4d P = Eigen::Matrix4d::Identity(); 
     if (!poses_file.is_open()) {
-        std::cout << "Can't open file " << filepath <<  std::endl;
+        std::cout << "Can't open file " << poses_path <<  std::endl;
         return poses;
     }
     
@@ -103,7 +74,7 @@ std::vector<Eigen::Matrix4d> KITTI::loadposes(const std::string& filepath) {
     return poses;
 }
 
-  //Calibrates input data according to the calib file
+//Making dictionary from calibration file
 std::unordered_map<std::string, std::vector<float>> KITTI::read_calib_data(const std::string& calib_path){
     std::unordered_map<std::string, std::vector<float>> calib_dict;
     std::ifstream f(calib_path);
