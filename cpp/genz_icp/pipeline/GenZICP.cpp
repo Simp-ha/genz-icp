@@ -26,6 +26,8 @@
 #include <Eigen/Core>
 #include <tuple>
 #include <vector>
+#include <chrono>
+#include <fstream>
 
 #include "genz_icp/core/Deskew.hpp"
 #include "genz_icp/core/Preprocessing.hpp"
@@ -53,6 +55,8 @@ GenZICP::Vector3dVectorTuple GenZICP::RegisterFrame(const std::vector<Eigen::Vec
     }();
     return RegisterFrame(deskew_frame);
 }
+// Getting the timings for every scan
+std::ofstream out("./timings.txt", std::ios_base::app);
 
 GenZICP::Vector3dVectorTuple GenZICP::RegisterFrame(const std::vector<Eigen::Vector3d> &frame) {
     // Preprocess the input cloud
@@ -75,6 +79,7 @@ GenZICP::Vector3dVectorTuple GenZICP::RegisterFrame(const std::vector<Eigen::Vec
     const auto last_pose = !poses_.empty() ? poses_.back() : Sophus::SE3d();
     const auto initial_guess = last_pose * prediction;
 
+    auto t1 = std::chrono::high_resolution_clock::now();
     // Run GenZ-ICP
     const auto &[new_pose, planar_points, non_planar_points] = registration_.RegisterFrame(source,         //
                                                           local_map_,     //
@@ -82,9 +87,18 @@ GenZICP::Vector3dVectorTuple GenZICP::RegisterFrame(const std::vector<Eigen::Vec
                                                           3.0 * sigma,    //
                                                           sigma / 3.0);
     const auto model_deviation = initial_guess.inverse() * new_pose;
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    double Reg = std::chrono::duration<double, std::milli>(t2 - t1).count();
+
     adaptive_threshold_.UpdateModelDeviation(model_deviation);
+
+    t1 = std::chrono::high_resolution_clock::now();
     local_map_.Update(frame_downsample, new_pose);
+    t2 = std::chrono::high_resolution_clock::now();
+    double Up = std::chrono::duration<double, std::milli>(t2 - t1).count();
     poses_.push_back(new_pose);
+    out << "[RegisterFrame Update]: "<< Reg << " " << Up << std::endl;
     return {planar_points, non_planar_points};
 }
 

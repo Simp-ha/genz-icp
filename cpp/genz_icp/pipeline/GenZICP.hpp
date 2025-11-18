@@ -36,12 +36,12 @@ namespace genz_icp::pipeline {
 struct GenZConfig {
     // map params
     double max_range = 100.0;
-    double min_range = 0.5;
-    double map_cleanup_radius = 400.0;
-    int max_points_per_voxel = 1;
+    double min_range = 5.0;//0.5;
+    double map_cleanup_radius = 100.0;
+    int max_points_per_voxel = 20;
 
     // voxelize params
-    double voxel_size = 0.25;
+    double voxel_size = 1;//0.25;
     int desired_num_voxelized_points = 2000;
 
     // th parms

@@ -143,33 +143,33 @@ std::tuple<Eigen::Matrix6d, Eigen::Vector6d> BuildLinearSystem(
     return std::make_tuple(JTJ, JTr);
 }
 
-void VisualizeStatus(size_t planar_count, size_t non_planar_count, double alpha) {
-    const int bar_width = 52;
-    const std::string planar_color = "\033[1;38;2;0;119;187m";
-    const std::string non_planar_color = "\033[1;38;2;238;51;119m";
-    const std::string alpha_color = "\033[1;32m";
+ void VisualizeStatus(size_t planar_count, size_t non_planar_count, double alpha) {
+     const int bar_width = 52;
+     const std::string planar_color = "\033[1;38;2;0;119;187m";
+     const std::string non_planar_color = "\033[1;38;2;238;51;119m";
+     const std::string alpha_color = "\033[1;32m";
 
-    printf("\033[2J\033[1;1H"); // Clear terminal
-    std::cout << "====================== GenZ-ICP ======================\n";
-    std::cout << non_planar_color << "# of non-planar points: " << non_planar_count << ", ";
-    std::cout << planar_color << "# of planar points: " << planar_count << "\033[0m\n";
+     printf("\033[2J\033[1;1H"); // Clear terminal
+     std::cout << "====================== GenZ-ICP ======================\n";
+     std::cout << non_planar_color << "# of non-planar points: " << non_planar_count << ", ";
+     std::cout << planar_color << "# of planar points: " << planar_count << "\033[0m\n";
 
-    std::cout << "Unstructured  <-----  ";
-    std::cout << alpha_color << "alpha: " << std::fixed << std::setprecision(3) << alpha << "\033[0m";
-    std::cout << "  ----->  Structured\n";
+     std::cout << "Unstructured  <-----  ";
+     std::cout << alpha_color << "alpha: " << std::fixed << std::setprecision(3) << alpha << "\033[0m";
+     std::cout << "  ----->  Structured\n";
 
-    const int alpha_location = static_cast<int>(bar_width * alpha); 
-    std::cout << "[";
-    for (int i = 0; i < bar_width; ++i) {
-        if (i == alpha_location) {
-            std::cout << "\033[1;32m█\033[0m"; 
-        } else {
-            std::cout << "-"; 
-        }
-    }
-    std::cout << "]\n";
-    std::cout.flush();
-}
+     const int alpha_location = static_cast<int>(bar_width * alpha); 
+     std::cout << "[";
+     for (int i = 0; i < bar_width; ++i) {
+         if (i == alpha_location) {
+             std::cout << "\033[1;32m█\033[0m"; 
+         } else {
+             std::cout << "-"; 
+         }
+     }
+     std::cout << "]\n";
+     std::cout.flush();
+ }
 }  // namespace
 
 namespace genz_icp {

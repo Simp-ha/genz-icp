@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <memory>
+#include <ostream>
 #include <sophus/se3.hpp>
 #include <utility>
 #include <vector>
@@ -88,13 +89,13 @@ int main(int argc, char* argv[]){
     std::string seq = kitti.seq[i];
     
     // Exporting poses into est_poses.txt
-    if (std::filesystem::exists("./results/"+seq))
-        std::cout << "Result " << seq << " directory already exists" << std::endl;
-    else
-        system(("mkdir -p ./results/" + seq).c_str());
+    //if (std::filesystem::exists("./results/"+seq))
+    //    std::cout << "Result " << seq << " directory already exists" << std::endl;
+    //else
+    //    system(("mkdir -p ./results/" + seq).c_str());
     
     //Results directory with extension of sequence number for file
-    const std::string result_dir = "results/" + seq;
+    const std::string result_dir = "./results/" + seq;
     //Output estimated poses file
     const std::string filename = result_dir + "_est_poses.txt";
     const std::string dataset_seq = dataset + "sequences/" + seq ; 
@@ -121,27 +122,27 @@ int main(int argc, char* argv[]){
         
         // Load timestamps
         auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
+        std::ofstream out("./timings.txt", std::ios_base::app);
         
-        
+        std::vector<std::vector<Eigen::Vector3d>> frames;
         // Sort out the binary data directory
         std::sort(bindir.begin(),bindir.end());
-        // Inserting the points of a sequence and the GenZ Begins
-        std::ofstream file("frame.txt");
+        // bin -> frames 
         for(auto b: bindir){
             std::cout << b << std::endl;
             auto frame = kitti.loadframe(b);
-            if(debug){
-                std::cout<<"Frame=["; 
-                for(auto f: frame) {
-                    for(auto p: f) file << p << " ";
-                    file << std::endl;
-                }
-                getchar();
-                std::cout << "\nNEXT PLEASE" <<std::endl;
-            }
-            auto [planar, non_planar] = odometry.RegisterFrame(frame, timestamps);
+            frames.push_back(frame);
         }
-        file.close();
+        // Running the GenZ
+        int i=0;
+        out << "======== SEQUENCE "<< seq << " =========" <<std::endl;
+        for(auto frame :frames){
+            out << "Frame " << i << " " << std::flush;
+            auto [planar, non_planar] = odometry.RegisterFrame(frame, timestamps);
+            std::cout << i;
+            i++;
+        }
+        out.close();
         //Writing output seq_est_poses.txt
         std::ofstream ofs(filename);
         if (!ofs.is_open()) {

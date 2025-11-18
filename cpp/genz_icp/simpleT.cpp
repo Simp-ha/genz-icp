@@ -11,6 +11,8 @@
 #include <iostream>
 #include <tuple>
 #include <vector>
+#include <chrono>
+#include <map>
 
 // GenZ-ICP
 #include "genz_icp/pipeline/GenZICP.hpp"
@@ -79,6 +81,21 @@ bool is_empty(const std::string& filename) {
     return file.tellg() == 0 && file.peek() == std::ifstream::traits_type::eof();
 }
 
+std::vector<std::vector<std::string>> batch_maker(const int& n, const int& batch_size, const std::vector<std::string>& paths){
+    // Initial variable
+    std::vector<std::vector<std::string>> batches ;
+    std::vector<std::string> batch;
+    for(int i = 0; i < n + 1; ++i){
+        int bi = i*batch_size;
+        for(int j= 0; j < batch_size; j++){
+            if(paths[bi+j].empty()) break;
+            batch.push_back(paths[bi+j]);
+        }
+        batches.push_back(batch);
+        batch.clear();
+    }
+    return batches;
+}
 
 int main(int argc, char* argv[]){
     // First Arguments for outputs etc.
@@ -123,42 +140,50 @@ int main(int argc, char* argv[]){
         
         // Load timestamps
         auto timestamps = kitti.loadTimestamps(dataset_seq + "/times.txt");
-
-        std::sort(bindir.begin(),bindir.end());
-
-        //Making batches for data
-        const int batch_size = 500;
-        const int n = bindir.size()/batch_size;
-        std::string batches[n+1][batch_size];
-        for(int i = 0; i < n + 1; ++i){
-            int bi = i*batch_size;
-            for(int j= 0; j < batch_size; j++){
-                if(bindir[bi+j].empty()) break;
-                batches[i][j] =  bindir[bi+j];
-            }
-        }
-
+        
         // Sort out the binary data directory
-        // Inserting the points of a sequence and the GenZ Begins
-        std::ofstream file("frame.txt");
+        std::sort(bindir.begin(),bindir.end());
+        std::vector<std::vector<std::string>> batches;
+        const int batch_size = 300;
+        const int n = bindir.size()/batch_size;
+
+        batches = batch_maker(n, batch_size, bindir);
+        std::cout << "Batches made" << std::endl;
+        
         // std::tuple<Vector3dVector, Vector3dVector> results[n];
         // std::vector<std::tuple<Vector3dVector, Vector3dVector>> ALLres;
+        
+        std::ofstream file("frame.txt");
+        // Inserting the points of a sequence and the GenZ Begins
+        // for(int i =0; i < n + 1; ++i ){
+        //     for(int j = 0; j < batch_size; j++){
 
-        // for(auto b: bindir){
-        for(int i = 0; i < n + 1; ++i){
-            for(int j = 0; j < batch_size; ++j){
-                std::cout << "BATCH " + i << batches[i][j] << std::endl;
-                auto frame = kitti.loadframe(batches[i][j]);
+        // Dictionary-> file_registered : time_in_ms 
+        std::vector<Vector3dVector> frames; 
+        std::unordered_map<std::string, double> Timings;
+
+        for(auto batch : batches){
+            for(auto b : batch){
+                auto frame = kitti.loadframe(b);
+                std::cout << "BATCH "  << i << " " << b << std::endl;
                 if(debug){
                     std::cout<<"Frame=["; 
                     for(auto f: frame) {
                         for(auto p: f) file << p << " ";
                         file << std::endl;
                     }
-                    getchar();
                 }
+                // Timing the RegisterFrame function
+                auto t1 = std::chrono::high_resolution_clock::now();
                 odometry.RegisterFrame(frame, timestamps);
+                auto t2 = std::chrono::high_resolution_clock::now();
+                double Dt = std::chrono::duration<double, std::milli>(t2 -t1).count();
+
+                // Inserting into dictionary only the ones > 200 ms
+                if(Dt > 200) Timings[b] = Dt;
             }
+            // Exporting the results of the time
+            for(auto t : Timings) std::cout << t.first << " : " << t.second << std::endl;
             getchar();
         }
         file.close();
@@ -201,4 +226,3 @@ int main(int argc, char* argv[]){
   //if(eval(result_dir, seq))std::cout << "Evaluation is completed" << std::endl;
     return 0;
 }
-//}

@@ -135,3 +135,18 @@ python/build/
 *.pyc
 
 # End of https://www.gitignore.io/api/c++,code,cmake,eclipse
+
+cpp/.cache/
+cpp/devkit/
+cpp/frame.txt
+cpp/genz_icp/eval/
+cpp/genz_icp/evalGT/
+cpp/genz_icp/kati.cpp
+cpp/genz_icp/visualize/
+cpp/results/
+cpp/run.sh
+cpp/tim_Rees.tx
+cpp/timings.txt
+cpp/yeet.sh
+python/
+
